@@ -1,80 +1,71 @@
-<script type="text/javascript">
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Биткойн Калкулатор</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #000; color: #fff; text-align: center; }
+        .container { max-width: 600px; margin: 50px auto; padding: 20px; }
+        input, button { padding: 10px; margin: 5px; }
+        #result { margin-top: 20px; font-size: 1.2em; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Биткойн Миньорски Калкулатор</h1>
+        <input type="number" id="hashrate" placeholder="Вашият hashrate (kH/s)" min="1">
+        <input type="number" id="power" placeholder="Енергия (Watt)" min="1">
+        <input type="number" id="cost" placeholder="Цена на електричеството (лв/kWh)" min="0.1" step="0.01">
+        <input type="number" id="btcPrice" placeholder="Цена на Биткойн (USD)" min="1" step="0.01">
+        <button onclick="calculate()">Смятане</button>
+        <div id="result"></div>
+    </div>
+    <script type="text/javascript">
         var gk_isXlsx = false;
         var gk_xlsxFileLookup = {};
         var gk_fileData = {};
         function filledCell(cell) {
-          return cell !== '' && cell != null;
+            return cell !== '' && cell != null;
         }
         function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
+            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+                try {
+                    var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                    var firstSheetName = workbook.SheetNames[0];
+                    var worksheet = workbook.Sheets[firstSheetName];
+                    var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                    var filteredData = jsonData.filter(row => row.some(filledCell));
+                    var headerRowIndex = filteredData.findIndex((row, index) =>
+                        row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                    );
+                    if (headerRowIndex === -1 || headerRowIndex > 25) {
+                        headerRowIndex = 0;
+                    }
+                    var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                    return csv;
+                } catch (e) {
+                    console.error(e);
+                    return "";
                 }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
             }
+            return gk_fileData[filename] || "";
         }
-        return gk_fileData[filename] || "";
+
+        function calculate() {
+            let hashrate = parseFloat(document.getElementById('hashrate').value) || 0;
+            let power = parseFloat(document.getElementById('power').value) || 0;
+            let cost = parseFloat(document.getElementById('cost').value) || 0;
+            let btcPrice = parseFloat(document.getElementById('btcPrice').value) || 119200.57;
+            let usdToBgn = 1.8;
+            let difficulty = 444.505;
+            let blockReward = 6.25;
+
+            let dailyProfit = (hashrate / (difficulty * 1000000)) * blockReward * 144 * (btcPrice * usdToBgn) - ((power / 1000) * 24 * cost);
+            document.getElementById('result').innerText = `Дневна печалба: ${dailyProfit.toFixed(2)} лв (ако мрежата работи)`;
         }
-        </script><!DOCTYPE html>
-       <html lang="bg">
-       <head>
-           <meta charset="UTF-8">
-           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-           <title>Биткойн Калкулатор</title>
-           <style>
-               body { font-family: Arial, sans-serif; background-color: #000; color: #fff; text-align: center; }
-               .container { max-width: 600px; margin: 50px auto; padding: 20px; }
-               input, button { padding: 10px; margin: 5px; }
-               #result { margin-top: 20px; font-size: 1.2em; }
-           </style>
-       </head>
-       <body>
-           <div class="container">
-               <h1>Биткойн Миньорски Калкулатор</h1>
-               <input type="number" id="hashrate" placeholder="Вашият hashrate (kH/s)" min="1">
-               <input type="number" id="power" placeholder="Енергия (Watt)" min="1">
-               <input type="number" id="cost" placeholder="Цена на електричеството (лв/kWh)" min="0.1" step="0.01">
-               <button onclick="calculate()">Смятане</button>
-               <div id="result"></div>
-           </div>
-           <script>
-               function calculate() {
-                   let hashrate = parseFloat(document.getElementById('hashrate').value) || 0;
-                   let power = parseFloat(document.getElementById('power').value) || 0;
-                   let cost = parseFloat(document.getElementById('cost').value) || 0;
-                   let btcPrice = 119200.57; // Цена на Биткойн в USD (примерна, от 2025-07-19)
-                   let usdToBgn = 1.8; // Примерен курс USD към BGN
-
-                   // Примерна трудност и награда (може да се променят)
-                   let difficulty = 444.505;
-                   let blockReward = 6.25; // Награда за блок (ако е актуална)
-
-                   // Проста формула (приблизителна)
-                   let dailyProfit = (hashrate / (difficulty * 1000000)) * blockReward * 144 * (btcPrice * usdToBgn) - ((power / 1000) * 24 * cost);
-                   document.getElementById('result').innerText = `Дневна печалба: ${dailyProfit.toFixed(2)} лв (ако мрежата работи)`;
-               }
-           </script>
-       </body>
-       </html>
+    </script>
+</body>
+</html>
